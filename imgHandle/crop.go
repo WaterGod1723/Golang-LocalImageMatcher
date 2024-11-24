@@ -16,12 +16,18 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-func DetectEdges(data []byte) (*image.NRGBA, error) {
+var count = 0
+
+func BytesImageDetect(data []byte) (*image.NRGBA, error) {
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
 	}
+	return DetectEdges(img)
+}
+
+func DetectEdges(img image.Image) (*image.NRGBA, error) {
 	matData, err := ImageToDense(img)
 	if err != nil {
 		log.Fatal(err)
@@ -70,10 +76,25 @@ func DetectEdges(data []byte) (*image.NRGBA, error) {
 			}
 		}
 	}
+	// 保存边缘图像
+	bounds := image.Rect(0, 0, maxX-minX, maxY-minY)
+	edgeImage := image.NewNRGBA(bounds)
+	for y := 0; y < bounds.Dy(); y++ {
+		for x := 0; x < bounds.Dx(); x++ {
+			value := edges.At(minY+y, minX+x)
+			// 将 float64 值转换为 uint8 值
+			grayValue := uint8(math.Min(255, value))
+			edgeImage.Set(x, y, color.NRGBA{R: grayValue, G: grayValue, B: grayValue, A: 255})
+		}
+	}
+
+	// file, _ := os.Create(fmt.Sprintf("./textImgs/edge_%d.png", count))
+	// png.Encode(file, edgeImage)
+	// defer file.Close()
 
 	// 根据min，max对边缘进行裁剪
-	newImg := imaging.Crop(img, image.Rect(minX, minY, maxX+1, maxY+1))
-	newImg = imaging.Resize(newImg, 64, 64, imaging.Lanczos)
+	// newImg := imaging.Crop(img, image.Rect(minX, minY, maxX+1, maxY+1))
+	newImg := imaging.Resize(edgeImage, 64, 64, imaging.Lanczos)
 	return newImg, nil
 }
 

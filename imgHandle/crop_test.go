@@ -40,7 +40,7 @@ func TestCrop(t *testing.T) {
 
 		// 图片边缘检测，输出检测后的图片
 		pngData := new(bytes.Buffer)
-		resImg, _ := imgHandle.DetectEdges(data)
+		resImg, _ := imgHandle.BytesImageDetect(data)
 		png.Encode(pngData, resImg)
 
 		// 创建output文件夹
