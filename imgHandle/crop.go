@@ -51,15 +51,19 @@ func DetectEdges(img image.Image) (*image.NRGBA, error) {
 		if i-1 >= 0 {
 			dy -= matData.At(i-1, j)
 		}
-		return math.Sqrt(dx*dx + dy*dy)
+		if math.Sqrt(dx*dx+dy*dy) > 100 {
+			return 255
+		} else {
+			return 0
+		}
 	}, matData)
 	// 从上下左右四个方向向边缘靠拢，裁剪掉多余部分
-	minX0, minY0 := edges.Dims()
+	maxY0, maxX0 := edges.Dims()
 	maxX, maxY := 0, 0
-	minX, minY := minX0, minY0
+	minX, minY := maxX0, maxY0
 	MAX := 1.0
-	for y := 0; y < minY0; y++ {
-		for x := 0; x < minX0; x++ {
+	for y := 0; y < maxY0; y++ {
+		for x := 0; x < maxX0; x++ {
 			if edges.At(y, x) > MAX {
 				if x < minX {
 					minX = x

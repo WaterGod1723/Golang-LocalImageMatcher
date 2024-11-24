@@ -1,6 +1,7 @@
 package screenshot_test
 
 import (
+	"image"
 	"imgSearcher/screenshot"
 	"log"
 	"os"
@@ -12,5 +13,5 @@ func TestCrop(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	screenshot.WatchClipboard()
+	screenshot.WatchClipboard(func(dense *image.RGBA) {})
 }

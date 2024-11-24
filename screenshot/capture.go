@@ -14,7 +14,7 @@ import (
 	"github.com/lxn/win"
 )
 
-func WatchClipboard() {
+func WatchClipboard(onImgCopyCb func(img *image.RGBA)) {
 	// 定义保存图片的路径
 	filePath := "clipboard_image.png"
 
@@ -110,6 +110,7 @@ func WatchClipboard() {
 				img.Set(x, y, color.RGBA{R: bmpBytes[offset], G: bmpBytes[offset+1], B: bmpBytes[offset+2], A: bmpBytes[offset+3]})
 			}
 		}
+		onImgCopyCb(img)
 
 		// 保存图片
 		file, err := os.Create(filePath)

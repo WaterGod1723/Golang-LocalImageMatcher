@@ -56,3 +56,8 @@ func TestCrop(t *testing.T) {
 		}
 	}
 }
+
+func TestHash(t *testing.T) {
+	// l,_ := goimagehash.PerceptionHash()
+	// l.
+}
