@@ -1,4 +1,4 @@
-module test
+module imgSearcher
 
 go 1.23.1
 
