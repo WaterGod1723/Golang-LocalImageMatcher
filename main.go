@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"image"
 	"image/png"
-	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -32,7 +31,7 @@ func main() {
 	// 遍历所有图片文件
 	for _, file := range imageFiles {
 		// 读取图片文件
-		data, err := ioutil.ReadFile(file)
+		data, err := os.ReadFile(file)
 		if err != nil {
 			log.Fatal(err)
 		}
