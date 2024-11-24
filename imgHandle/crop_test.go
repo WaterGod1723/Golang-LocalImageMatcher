@@ -1,7 +1,9 @@
 package imgHandle_test
 
 import (
+	"bytes"
 	"fmt"
+	"image/png"
 	"imgSearcher/imgHandle"
 	"log"
 	"os"
@@ -37,7 +39,9 @@ func TestCrop(t *testing.T) {
 		}
 
 		// 图片边缘检测，输出检测后的图片
-		pngData := imgHandle.DetectEdges(data)
+		pngData := new(bytes.Buffer)
+		resImg, _ := imgHandle.DetectEdges(data)
+		png.Encode(pngData, resImg)
 
 		// 创建output文件夹
 		err = os.MkdirAll("./textImgs/output", 0755)
@@ -46,7 +50,7 @@ func TestCrop(t *testing.T) {
 		}
 
 		// 将处理后的数据保存为png文件
-		err = os.WriteFile("./textImgs/output/"+filepath.Base(file), pngData, 0644)
+		err = os.WriteFile("./textImgs/output/"+filepath.Base(file), pngData.Bytes(), 0644)
 		if err != nil {
 			log.Fatal(err)
 		}

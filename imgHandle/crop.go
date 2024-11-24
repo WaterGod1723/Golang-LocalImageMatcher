@@ -2,8 +2,10 @@ package imgHandle
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"image"
+	"image/color"
 	"image/png"
 	"log"
 	"math"
@@ -14,20 +16,16 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-func DetectEdges(data []byte) []byte {
+func DetectEdges(data []byte) (*image.NRGBA, error) {
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		log.Fatal(err)
+		return nil, err
 	}
-	// 将图片转换为灰度图
-	gray := imaging.Grayscale(img)
-	// 将灰度图转换为矩阵
-	matData := mat.NewDense(gray.Bounds().Dy(), gray.Bounds().Dx(), nil)
-	for y := 0; y < gray.Bounds().Dy(); y++ {
-		for x := 0; x < gray.Bounds().Dx(); x++ {
-			r, _, _, _ := gray.At(x, y).RGBA()
-			matData.Set(y, x, float64(r))
-		}
+	matData, err := ImageToDense(img)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
 	}
 	// 利用库计算图像边缘
 	edges := mat.NewDense(matData.RawMatrix().Rows, matData.RawMatrix().Cols, nil)
@@ -76,12 +74,32 @@ func DetectEdges(data []byte) []byte {
 	// 根据min，max对边缘进行裁剪
 	newImg := imaging.Crop(img, image.Rect(minX, minY, maxX+1, maxY+1))
 	newImg = imaging.Resize(newImg, 64, 64, imaging.Lanczos)
-	buf := new(bytes.Buffer)
-	err = png.Encode(buf, newImg)
-	if err != nil {
-		log.Fatal(err)
+	return newImg, nil
+}
+
+type ImageForDense interface {
+	Bounds() image.Rectangle
+	At(int, int) color.Color
+}
+
+func ImageToDense(img ImageForDense) (*mat.Dense, error) {
+	var gray ImageForDense
+	if s, ok := img.(*image.NRGBA); ok {
+		gray = s
+	} else if s, ok := img.(image.Image); ok {
+		gray = imaging.Grayscale(s)
+	} else {
+		return nil, errors.New("不支持的图片类型")
 	}
-	return buf.Bytes()
+	// 将灰度图转换为矩阵
+	metaData := mat.NewDense(gray.Bounds().Dy(), gray.Bounds().Dx(), nil)
+	for y := 0; y < gray.Bounds().Dy(); y++ {
+		for x := 0; x < gray.Bounds().Dx(); x++ {
+			r, _, _, _ := gray.At(x, y).RGBA()
+			metaData.Set(y, x, float64(r))
+		}
+	}
+	return metaData, nil
 }
 
 func DrawEdges(img image.Image, minX, minY, maxX, maxY int) []byte {
