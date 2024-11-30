@@ -178,7 +178,7 @@ func setupRouter(service *ImageHashService) *gin.Engine {
 		service.mutex.RLock()
 		for filename, storedHash := range service.HashList {
 			similarity := calculateSimilarity(hash, storedHash)
-			if similarity <= 100 { // 设置相似度阈值
+			if similarity > 0.5 { // 设置相似度阈值
 				matches = append(matches, Match{
 					Filename:   filename,
 					Similarity: similarity,
