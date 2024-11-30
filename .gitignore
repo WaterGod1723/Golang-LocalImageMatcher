@@ -2,3 +2,7 @@ node_modules
 textImgs/output
 .vscode
 *.png
+*.jpg
+*.jpeg
+*.bmp
+*.gif
