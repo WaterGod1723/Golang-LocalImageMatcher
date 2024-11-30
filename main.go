@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"image"
 	"imgSearcher/imgHandle"
 	"log"
@@ -17,7 +18,9 @@ import (
 const STATIC_PATH = "static"
 
 func main() {
-	service := NewImageHashService(STATIC_PATH + "/images")
+	staticPath := flag.String("static", STATIC_PATH, "Path to static directory")
+	flag.Parse()
+	service := NewImageHashService(*staticPath)
 	if err := service.Initialize(); err != nil {
 		log.Fatal("Failed to initialize service:", err)
 	}
@@ -70,7 +73,7 @@ func isImageFile(path string) bool {
 }
 
 func (s *ImageHashService) processAndStoreImage(path string) error {
-	imageName := path[len(STATIC_PATH)+1:]
+	imageName := path[len(s.imagePath)+1:]
 	// 打开并处理图片
 	img, err := imaging.Open(path)
 	if err != nil {
