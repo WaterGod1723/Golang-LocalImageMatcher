@@ -236,14 +236,12 @@
         }
 
         resultsDiv.innerHTML = matches
-          .sort((a, b) => -b.similarity + a.similarity)
+          .sort((a, b) => b.similarity - a.similarity)
           .map(
             (match) => `
             <div class="match-item">
-              <img src="/static/${match.filename}" alt="${
-              match.filename
-            }">
-              <p>相似度: ${((1 - match.similarity / 64) * 100).toFixed(2)}%</p>
+              <img src="/static/${match.filename}" alt="${match.filename}">
+              <p>相似度: ${(match.similarity * 100).toFixed(2)}%</p>
             </div>
           `
           )

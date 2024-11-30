@@ -9,6 +9,8 @@ import (
 	"github.com/disintegration/imaging"
 )
 
+const BACKGROUND_THRESHOLD = 16
+
 func LoadImg(path string) (*image.Image, error) {
 	img, err := imaging.Open(path)
 	if err != nil {
@@ -98,7 +100,7 @@ func Crop(img *image.Image, result EdgeDetectResult) *image.Image {
 	// 1. 先裁剪到边缘检测区域
 	croppedImg := cropImage(img, result)
 	// 2. 移除背景色（设置阈值为15）
-	croppedImg = RemoveBackground(&croppedImg, 15)
+	croppedImg = RemoveBackground(&croppedImg, BACKGROUND_THRESHOLD)
 	// 3. 确保最小尺寸
 	scaledImg := scaleImage(croppedImg)
 

@@ -27,7 +27,7 @@ func main() {
 }
 
 type ImageHashService struct {
-	HashList  map[string]uint64 // 文件名 -> hash值
+	HashList  map[string]imgHandle.Hashs // 文件名 -> hash值
 	mutex     sync.RWMutex
 	hashFile  string // hash值持久化文件路径
 	imagePath string // 图片目录
@@ -35,7 +35,7 @@ type ImageHashService struct {
 
 func NewImageHashService(imagePath string) *ImageHashService {
 	return &ImageHashService{
-		HashList:  make(map[string]uint64),
+		HashList:  make(map[string]imgHandle.Hashs),
 		hashFile:  "image_hashes.json",
 		imagePath: imagePath,
 	}
@@ -124,8 +124,8 @@ func (s *ImageHashService) saveHashes() error {
 }
 
 type Match struct {
-	Filename   string `json:"filename"`
-	Similarity int    `json:"similarity"`
+	Filename   string  `json:"filename"`
+	Similarity float64 `json:"similarity"`
 }
 
 func setupRouter(service *ImageHashService) *gin.Engine {
@@ -193,7 +193,18 @@ func setupRouter(service *ImageHashService) *gin.Engine {
 	return r
 }
 
-func calculateSimilarity(hash, storedHash uint64) int {
-	distance := bits.OnesCount64(hash ^ storedHash)
-	return distance
+func calculateSimilarity(hash, storedHash imgHandle.Hashs) float64 {
+	distanceP := 0
+	for i := 0; i < len(hash.PerceptionHash); i++ {
+		distanceP += bits.OnesCount64(hash.PerceptionHash[i] ^ storedHash.PerceptionHash[i])
+	}
+	distanceA := 0
+	for i := 0; i < len(hash.AverageHash); i++ {
+		distanceA += bits.OnesCount64(hash.AverageHash[i] ^ storedHash.AverageHash[i])
+	}
+	distanceD := 0
+	for i := 0; i < len(hash.DifferenceHash); i++ {
+		distanceD += bits.OnesCount64(hash.DifferenceHash[i] ^ storedHash.DifferenceHash[i])
+	}
+	return 1 - float64(distanceP+distanceA+distanceD)/float64(len(hash.PerceptionHash)*64*3)
 }
