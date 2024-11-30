@@ -4,6 +4,18 @@
 
 ## English
 
+### Problem Solved
+As frontend developers, we often face these challenges:
+- Need to find the exact name of an icon from a large icon library
+- Different team members use different naming conventions
+- Multiple duplicate icons exist in the codebase
+- Time wasted searching through hundreds of icons manually
+
+This tool helps you quickly find icons and their filenames by:
+- Simply uploading a screenshot or pasting from clipboard
+- Finding similar icons even if they're not exact matches
+- Showing all variations of the same icon with their filenames
+
 ### Features
 - Local image reverse search
 - Similar image search
@@ -43,6 +55,18 @@ The converted PNG files will:
 ---
 
 ## 中文
+
+### 解决的问题
+作为前端开发人员，我们经常面临这些挑战：
+- 需要从大量图标库中找到目标图标的确切名称
+- 团队成员使用不同的命名规范
+- 代码库中存在多个重复的图标
+- 手动搜索数百个图标浪费时间
+
+这个工具通过以下方式帮助你快速找到图标及其文件名：
+- 简单地上传截图或从剪贴板粘贴（Ctrl+V）
+- 即使不是完全匹配也能找到相似图标
+- 显示同一图标的所有变体及其文件名
 
 ### 功能特性
 - 本地图片反向搜索
