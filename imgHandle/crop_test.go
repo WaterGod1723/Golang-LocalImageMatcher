@@ -24,37 +24,37 @@ func TestCrop(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("清空output文件夹")
-	imageFiles, err := imgHandle.GetAllImageFiles(dir)
+	err = os.MkdirAll("./textImgs/output", 0755)
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("清空output文件夹")
 
-	// 遍历所有图片文件
-	for _, file := range imageFiles {
-		// 读取图片文件
-		data, err := os.ReadFile(file)
+	filepath.Walk(dir+"/input", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		fmt.Println(path)
+		img, err := imgHandle.LoadImg(path)
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		// 图片边缘检测，输出检测后的图片
+		newImg := imgHandle.Crop(imgHandle.EdgeDetect(img))
+		if err != nil {
+			log.Fatal(err)
+		}
 		pngData := new(bytes.Buffer)
-		resImg, _ := imgHandle.BytesImageDetect(data)
-		png.Encode(pngData, resImg)
-
-		// 创建output文件夹
-		err = os.MkdirAll("./textImgs/output", 0755)
+		png.Encode(pngData, newImg)
+		err = os.WriteFile("./textImgs/output/"+filepath.Base(path), pngData.Bytes(), 0644)
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		// 将处理后的数据保存为png文件
-		err = os.WriteFile("./textImgs/output/"+filepath.Base(file), pngData.Bytes(), 0644)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
+		return nil
+	})
 }
 
 func TestHash(t *testing.T) {

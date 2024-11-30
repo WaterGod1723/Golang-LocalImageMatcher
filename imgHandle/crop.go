@@ -1,172 +1,158 @@
 package imgHandle
 
 import (
-	"bytes"
-	"errors"
-	"fmt"
 	"image"
 	"image/color"
-	"image/png"
-	"log"
+	"image/draw"
 	"math"
-	"os"
-	"path/filepath"
 
 	"github.com/disintegration/imaging"
-	"gonum.org/v1/gonum/mat"
 )
 
-var count = 0
-
-func BytesImageDetect(data []byte) (*image.NRGBA, error) {
-	img, _, err := image.Decode(bytes.NewReader(data))
+func LoadImg(path string) (*image.Image, error) {
+	img, err := imaging.Open(path)
 	if err != nil {
-		log.Fatal(err)
 		return nil, err
 	}
-	return DetectEdges(img)
+	return &img, nil
 }
 
-func DetectEdges(img image.Image) (*image.NRGBA, error) {
-	matData, err := ImageToDense(img)
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
+type EdgeDetectResult struct {
+	MinX int
+	MaxX int
+	MinY int
+	MaxY int
+}
+
+func EdgeDetect(img *image.Image) (*image.NRGBA, EdgeDetectResult) {
+	grayImg := imaging.Grayscale(*img)
+	bounds := grayImg.Bounds()
+	output := imaging.New(bounds.Dx(), bounds.Dy(), color.Gray{})
+
+	var minX, maxX, minY, maxY int
+	minX = bounds.Max.X
+	maxX = bounds.Min.X
+	minY = bounds.Max.Y
+	maxY = bounds.Min.Y
+
+	const threshold = 100
+
+	// sobel算子
+	x := [][]float64{
+		{-1, 0, 1},
+		{-2, 0, 2},
+		{-1, 0, 1},
 	}
-	// 利用库计算图像边缘
-	edges := mat.NewDense(matData.RawMatrix().Rows, matData.RawMatrix().Cols, nil)
-	edges.Apply(func(i, j int, v float64) float64 {
-		// 使用 Sobel 算法计算边缘
-		dx := 0.0
-		dy := 0.0
-		if j+1 < matData.RawMatrix().Cols {
-			dx += matData.At(i, j+1)
-		}
-		if j-1 >= 0 {
-			dx -= matData.At(i, j-1)
-		}
-		if i+1 < matData.RawMatrix().Rows {
-			dy += matData.At(i+1, j)
-		}
-		if i-1 >= 0 {
-			dy -= matData.At(i-1, j)
-		}
-		if math.Sqrt(dx*dx+dy*dy) > 100 {
-			return 255
-		} else {
-			return 0
-		}
-	}, matData)
-	// 从上下左右四个方向向边缘靠拢，裁剪掉多余部分
-	maxY0, maxX0 := edges.Dims()
-	maxX, maxY := 0, 0
-	minX, minY := maxX0, maxY0
-	MAX := 1.0
-	for y := 0; y < maxY0; y++ {
-		for x := 0; x < maxX0; x++ {
-			if edges.At(y, x) > MAX {
-				if x < minX {
-					minX = x
-				}
-				if y < minY {
-					minY = y
-				}
-				if x > maxX {
-					maxX = x
-				}
-				if y > maxY {
-					maxY = y
+	y := [][]float64{
+		{-1, -2, -1},
+		{0, 0, 0},
+		{1, 2, 1},
+	}
+
+	// 处理边界问题，需要跳过图像边缘的像素
+	for i := 1; i < bounds.Max.X-1; i++ {
+		for j := 1; j < bounds.Max.Y-1; j++ {
+			var sumX, sumY float64
+
+			// 执行3x3卷积
+			for k := -1; k <= 1; k++ {
+				for l := -1; l <= 1; l++ {
+					pixel := grayImg.At(i+k, j+l)
+					gray, _, _, _ := pixel.RGBA()
+					grayFloat := float64(gray >> 8) // 转换为0-255范围
+
+					sumX += x[k+1][l+1] * grayFloat
+					sumY += y[k+1][l+1] * grayFloat
 				}
 			}
+
+			// 计算梯度幅值
+			magnitude := math.Sqrt(sumX*sumX + sumY*sumY)
+			// 归一化到0-255
+			magnitude = math.Min(255, magnitude)
+
+			if magnitude > threshold {
+				if i < minX {
+					minX = i
+				}
+				if i > maxX {
+					maxX = i
+				}
+				if j < minY {
+					minY = j
+				}
+				if j > maxY {
+					maxY = j
+				}
+			}
+
+			output.Set(i, j, color.Gray{uint8(magnitude)})
 		}
 	}
-	// 保存边缘图像
-	bounds := image.Rect(0, 0, maxX-minX, maxY-minY)
-	edgeImage := image.NewNRGBA(bounds)
-	for y := 0; y < bounds.Dy(); y++ {
-		for x := 0; x < bounds.Dx(); x++ {
-			value := edges.At(minY+y, minX+x)
-			// 将 float64 值转换为 uint8 值
-			grayValue := uint8(math.Min(255, value))
-			edgeImage.Set(x, y, color.NRGBA{R: grayValue, G: grayValue, B: grayValue, A: 255})
-		}
-	}
-
-	// file, _ := os.Create(fmt.Sprintf("./textImgs/edge_%d.png", count))
-	// png.Encode(file, edgeImage)
-	// defer file.Close()
-
-	// 根据min，max对边缘进行裁剪
-	// newImg := imaging.Crop(img, image.Rect(minX, minY, maxX+1, maxY+1))
-	newImg := imaging.Resize(edgeImage, 64, 64, imaging.Lanczos)
-	return newImg, nil
+	maxX++
+	maxY++
+	return output, EdgeDetectResult{minX, maxX, minY, maxY}
 }
 
-type ImageForDense interface {
-	Bounds() image.Rectangle
-	At(int, int) color.Color
+func Crop(img *image.NRGBA, result EdgeDetectResult) *image.NRGBA {
+	// 1. 先裁剪到边缘检测区域
+	croppedImg := cropImage(img, result)
+
+	// 2. 确保最小尺寸
+	scaledImg := scaleImage(croppedImg)
+
+	// 3. 添加透明边框并居中
+	finalImg := addBorder(scaledImg, color.NRGBA{0, 0, 0, 0})
+
+	// 转换回 *image.NRGBA
+	return imaging.Clone(finalImg)
 }
 
-func ImageToDense(img ImageForDense) (*mat.Dense, error) {
-	var gray ImageForDense
-	if s, ok := img.(*image.NRGBA); ok {
-		gray = s
-	} else if s, ok := img.(image.Image); ok {
-		gray = imaging.Grayscale(s)
-	} else {
-		return nil, errors.New("不支持的图片类型")
-	}
-	// 将灰度图转换为矩阵
-	metaData := mat.NewDense(gray.Bounds().Dy(), gray.Bounds().Dx(), nil)
-	for y := 0; y < gray.Bounds().Dy(); y++ {
-		for x := 0; x < gray.Bounds().Dx(); x++ {
-			r, _, _, _ := gray.At(x, y).RGBA()
-			metaData.Set(y, x, float64(r))
-		}
-	}
-	return metaData, nil
+func cropImage(img image.Image, ed EdgeDetectResult) image.Image {
+	rect := image.Rect(ed.MinX, ed.MinY, ed.MaxX, ed.MaxY)
+	croppedImg := image.NewRGBA(rect)
+	draw.Draw(croppedImg, rect, img, image.Point{X: ed.MinX, Y: ed.MinY}, draw.Src)
+	return croppedImg
 }
 
-func DrawEdges(img image.Image, minX, minY, maxX, maxY int) []byte {
-	// 复制原图
-	newImg := imaging.Crop(img, image.Rect(minX, minY, maxX+1, maxY+1))
+func scaleImage(img image.Image) image.Image {
+	bounds := img.Bounds()
+	width := bounds.Dx()
+	height := bounds.Dy()
 
-	fmt.Println("裁剪坐标：", minX, minY, maxX, maxY)
-
-	buf := new(bytes.Buffer)
-	err := png.Encode(buf, newImg)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return buf.Bytes()
-}
-
-func GetAllImageFiles(dir string) ([]string, error) {
-	var imageFiles []string
-
-	// 遍历目录下的所有文件
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	// 确保至少有一边不小于50像素
+	minSize := 50
+	if width < minSize || height < minSize {
+		scale := float64(minSize) / float64(width)
+		if height < width {
+			scale = float64(minSize) / float64(height)
 		}
 
-		// 判断是否为图片文件
-		if IsImageFile(path) {
-			imageFiles = append(imageFiles, path)
-		}
-		return nil
-	})
-	fmt.Println("遍历文件：", imageFiles)
-	return imageFiles, err
+		newWidth := int(float64(width) * scale)
+		newHeight := int(float64(height) * scale)
+
+		return imaging.Resize(img, newWidth, newHeight, imaging.Lanczos)
+	}
+
+	return img
 }
 
-func IsImageFile(filePath string) bool {
-	// 根据文件扩展名判断是否为图片文件
-	ext := filepath.Ext(filePath)
-	switch ext {
-	case ".jpg", ".jpeg", ".png", ".gif":
-		return true
-	default:
-		return false
-	}
+func addBorder(img image.Image, borderColor color.Color) image.Image {
+	const MIN_PADDING = 5
+	bounds := img.Bounds()
+	width := bounds.Dx()
+	height := bounds.Dy()
+
+	// 取最大边作为最终尺寸，并添加padding
+	finalSize := int(math.Max(float64(width), float64(height))) + (MIN_PADDING * 2)
+
+	// 创建新的透明背景图像
+	newImg := imaging.New(finalSize, finalSize, color.NRGBA{0, 0, 0, 0})
+
+	// 计算居中位置
+	x := (finalSize - width) / 2
+	y := (finalSize - height) / 2
+
+	// 将原图绘制到新图像的中心位置
+	return imaging.Paste(newImg, img, image.Point{x, y})
 }
