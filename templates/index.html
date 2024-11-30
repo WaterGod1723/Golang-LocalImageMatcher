@@ -1,66 +1,140 @@
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>图片匹配服务</title>
     <style>
-        .results {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-            padding: 20px;
-        }
-        .match-item {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: center;
-        }
-        .match-item img {
-            max-width: 100%;
-            height: auto;
-        }
+      .results {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 20px;
+        padding: 20px;
+      }
+      .match-item {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: center;
+      }
+      .match-item img {
+        max-width: 100%;
+        height: auto;
+      }
+      #imageContainer {
+        margin: 10px 0;
+        max-width: 300px;
+      }
+      #imageContainer img {
+        max-width: 100%;
+        height: auto;
+      }
+      .upload-area {
+        margin: 20px;
+        padding: 20px;
+        border: 2px dashed #ccc;
+        text-align: center;
+      }
     </style>
-</head>
-<body>
-    <div>
-        <input type="file" id="imageInput" accept="image/*">
-        <button onclick="uploadImage()">上传并匹配</button>
+  </head>
+  <body>
+    <div class="upload-area">
+      <h3>请选择上传方式：</h3>
+      <div>
+        <input type="file" id="imageInput" accept="image/*" />
+        <button
+          onclick="uploadImage(document.getElementById('imageInput').files[0])"
+        >
+          上传并匹配
+        </button>
+      </div>
+      <div>
+        <p>或者直接粘贴截图 (Ctrl+V)</p>
+        <div id="imageContainer"></div>
+      </div>
     </div>
     <div id="results" class="results"></div>
 
     <script>
-        async function uploadImage() {
-            const input = document.getElementById('imageInput');
-            const file = input.files[0];
-            if (!file) {
-                alert('请选择图片');
-                return;
-            }
+      // 处理粘贴事件
+      document.addEventListener("paste", async (e) => {
+        document.getElementById("imageContainer").innerHTML = "";
+        document.getElementById("results").innerHTML = "";
+        document.getElementById("imageInput").value = "";
 
-            const formData = new FormData();
-            formData.append('image', file);
+        e.preventDefault();
+        const items = e.clipboardData.items;
 
-            try {
-                const response = await fetch('/match', {
-                    method: 'POST',
-                    body: formData
-                });
-                const matches = await response.json();
-                displayResults(matches);
-            } catch (error) {
-                console.error('Error:', error);
-                alert('上传失败');
-            }
+        for (let item of items) {
+          if (item.type.indexOf("image") !== -1) {
+            const file = item.getAsFile();
+            const imageContainer = document.getElementById("imageContainer");
+
+            // 显示预览
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              imageContainer.innerHTML = `<img src="${e.target.result}" alt="预览图">`;
+            };
+            reader.readAsDataURL(file);
+
+            // 自动上传
+            await uploadImageFile(file);
+            break;
+          }
+        }
+      });
+
+      // 文件上传处理
+      async function uploadImage(file) {
+        if (!file) {
+          return;
+        }
+        await uploadImageFile(file);
+      }
+
+      // 统一的上传处理函数
+      async function uploadImageFile(file) {
+        if (!file) {
+          alert("请选择图片");
+          return;
+        }
+        const formData = new FormData();
+        formData.append("image", file);
+
+        try {
+          const response = await fetch("/match", {
+            method: "POST",
+            body: formData,
+          });
+          if (!response.ok) {
+            throw new Error("上传失败");
+          }
+          const matches = await response.json();
+          displayResults(matches);
+        } catch (error) {
+          console.error("Error:", error);
+          alert("上传失败: " + error.message);
+        }
+      }
+
+      function displayResults(matches) {
+        const resultsDiv = document.getElementById("results");
+        if (matches.length === 0) {
+          resultsDiv.innerHTML = "<p>未找到匹配结果</p>";
+          return;
         }
 
-        function displayResults(matches) {
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = matches.map(match => `
-                <div class="match-item">
-                    <img src="/static/images/${match.Filename}" alt="${match.Filename}">
-                    <p>相似度: ${(match.Similarity * 100).toFixed(2)}%</p>
-                </div>
-            `).join('');
-        }
+        resultsDiv.innerHTML = matches
+          .sort((a, b) => -b.similarity + a.similarity)
+          .map(
+            (match) => `
+            <div class="match-item">
+              <img src="/static/images/${match.filename}" alt="${
+              match.filename
+            }">
+              <p>相似度: ${((1 - match.similarity / 64) * 100).toFixed(2)}%</p>
+            </div>
+          `
+          )
+          .join("");
+      }
     </script>
-</body>
+  </body>
 </html>

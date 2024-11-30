@@ -83,6 +83,8 @@ func (s *ImageHashService) processAndStoreImage(path, filename string) error {
 		return err
 	}
 
+	log.Println("filename:", filename, "hash:", hash)
+
 	// 存储hash
 	s.mutex.Lock()
 	s.HashList[filename] = hash

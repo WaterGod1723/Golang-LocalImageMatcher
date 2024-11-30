@@ -97,11 +97,12 @@ func EdgeDetect(img *image.Image) EdgeDetectResult {
 func Crop(img *image.Image, result EdgeDetectResult) *image.Image {
 	// 1. 先裁剪到边缘检测区域
 	croppedImg := cropImage(img, result)
-
-	// 2. 确保最小尺寸
+	// 2. 移除背景色（设置阈值为15）
+	croppedImg = RemoveBackground(&croppedImg, 15)
+	// 3. 确保最小尺寸
 	scaledImg := scaleImage(croppedImg)
 
-	// 3. 添加透明边框并居中
+	// 4. 添加透明边框并居中
 	finalImg := addBorder(scaledImg, color.NRGBA{0, 0, 0, 0})
 
 	// 转换回 *image.NRGBA

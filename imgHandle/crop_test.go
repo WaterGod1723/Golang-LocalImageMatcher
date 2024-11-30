@@ -18,13 +18,13 @@ func TestCrop(t *testing.T) {
 		log.Fatal(err)
 	}
 	// 指定要遍历的目录
-	dir := "./textImgs"
+	dir := "./testImgs"
 	// 清空output文件夹
-	err = os.RemoveAll("./textImgs/output")
+	err = os.RemoveAll("./testImgs/output")
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = os.MkdirAll("./textImgs/output", 0755)
+	err = os.MkdirAll("./testImgs/output", 0755)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestCrop(t *testing.T) {
 		}
 		pngData := new(bytes.Buffer)
 		png.Encode(pngData, *newImg)
-		err = os.WriteFile("./textImgs/output/"+filepath.Base(path), pngData.Bytes(), 0644)
+		err = os.WriteFile("./testImgs/output/"+filepath.Base(path), pngData.Bytes(), 0644)
 		if err != nil {
 			log.Fatal(err)
 		}
