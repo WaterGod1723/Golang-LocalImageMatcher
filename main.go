@@ -14,8 +14,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const STATIC_PATH = "static"
+
 func main() {
-	service := NewImageHashService("./static/images")
+	service := NewImageHashService(STATIC_PATH + "/images")
 	if err := service.Initialize(); err != nil {
 		log.Fatal("Failed to initialize service:", err)
 	}
@@ -53,7 +55,7 @@ func (s *ImageHashService) Initialize() error {
 
 		if !info.IsDir() && isImageFile(path) {
 			if _, exists := s.HashList[info.Name()]; !exists {
-				if err := s.processAndStoreImage(path, info.Name()); err != nil {
+				if err := s.processAndStoreImage(path); err != nil {
 					return err
 				}
 			}
@@ -67,7 +69,8 @@ func isImageFile(path string) bool {
 	return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp" || ext == ".gif"
 }
 
-func (s *ImageHashService) processAndStoreImage(path, filename string) error {
+func (s *ImageHashService) processAndStoreImage(path string) error {
+	imageName := path[len(STATIC_PATH)+1:]
 	// 打开并处理图片
 	img, err := imaging.Open(path)
 	if err != nil {
@@ -83,11 +86,11 @@ func (s *ImageHashService) processAndStoreImage(path, filename string) error {
 		return err
 	}
 
-	log.Println("filename:", filename, "hash:", hash)
+	log.Println("filename:", imageName, "hash:", hash)
 
 	// 存储hash
 	s.mutex.Lock()
-	s.HashList[filename] = hash
+	s.HashList[imageName] = hash
 	s.mutex.Unlock()
 
 	// 保存到文件
@@ -129,7 +132,7 @@ func setupRouter(service *ImageHashService) *gin.Engine {
 	r := gin.Default()
 
 	// 提供静态文件服务
-	r.Static("/static", "./static")
+	r.Static("/static", STATIC_PATH)
 	r.LoadHTMLGlob("templates/*")
 
 	// 首页

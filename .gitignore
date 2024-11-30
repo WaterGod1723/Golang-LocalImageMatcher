@@ -6,3 +6,4 @@ textImgs/output
 *.jpeg
 *.bmp
 *.gif
+!static/images/example/*
