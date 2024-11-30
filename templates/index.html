@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>图片匹配服务</title>
+    <style>
+        .results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+        .match-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        .match-item img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <input type="file" id="imageInput" accept="image/*">
+        <button onclick="uploadImage()">上传并匹配</button>
+    </div>
+    <div id="results" class="results"></div>
+
+    <script>
+        async function uploadImage() {
+            const input = document.getElementById('imageInput');
+            const file = input.files[0];
+            if (!file) {
+                alert('请选择图片');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('/match', {
+                    method: 'POST',
+                    body: formData
+                });
+                const matches = await response.json();
+                displayResults(matches);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('上传失败');
+            }
+        }
+
+        function displayResults(matches) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = matches.map(match => `
+                <div class="match-item">
+                    <img src="/static/images/${match.Filename}" alt="${match.Filename}">
+                    <p>相似度: ${(match.Similarity * 100).toFixed(2)}%</p>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

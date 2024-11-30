@@ -24,7 +24,7 @@ type EdgeDetectResult struct {
 	MaxY int
 }
 
-func EdgeDetect(img *image.Image) (*image.NRGBA, EdgeDetectResult) {
+func EdgeDetect(img *image.Image) EdgeDetectResult {
 	grayImg := imaging.Grayscale(*img)
 	bounds := grayImg.Bounds()
 	output := imaging.New(bounds.Dx(), bounds.Dy(), color.Gray{})
@@ -35,7 +35,7 @@ func EdgeDetect(img *image.Image) (*image.NRGBA, EdgeDetectResult) {
 	minY = bounds.Max.Y
 	maxY = bounds.Min.Y
 
-	const threshold = 100
+	const threshold = 70
 
 	// sobel算子
 	x := [][]float64{
@@ -91,10 +91,10 @@ func EdgeDetect(img *image.Image) (*image.NRGBA, EdgeDetectResult) {
 	}
 	maxX++
 	maxY++
-	return output, EdgeDetectResult{minX, maxX, minY, maxY}
+	return EdgeDetectResult{minX, maxX, minY, maxY}
 }
 
-func Crop(img *image.NRGBA, result EdgeDetectResult) *image.NRGBA {
+func Crop(img *image.Image, result EdgeDetectResult) *image.Image {
 	// 1. 先裁剪到边缘检测区域
 	croppedImg := cropImage(img, result)
 
@@ -105,13 +105,13 @@ func Crop(img *image.NRGBA, result EdgeDetectResult) *image.NRGBA {
 	finalImg := addBorder(scaledImg, color.NRGBA{0, 0, 0, 0})
 
 	// 转换回 *image.NRGBA
-	return imaging.Clone(finalImg)
+	return &finalImg
 }
 
-func cropImage(img image.Image, ed EdgeDetectResult) image.Image {
+func cropImage(img *image.Image, ed EdgeDetectResult) image.Image {
 	rect := image.Rect(ed.MinX, ed.MinY, ed.MaxX, ed.MaxY)
 	croppedImg := image.NewRGBA(rect)
-	draw.Draw(croppedImg, rect, img, image.Point{X: ed.MinX, Y: ed.MinY}, draw.Src)
+	draw.Draw(croppedImg, rect, *img, image.Point{X: ed.MinX, Y: ed.MinY}, draw.Src)
 	return croppedImg
 }
 
@@ -147,7 +147,7 @@ func addBorder(img image.Image, borderColor color.Color) image.Image {
 	finalSize := int(math.Max(float64(width), float64(height))) + (MIN_PADDING * 2)
 
 	// 创建新的透明背景图像
-	newImg := imaging.New(finalSize, finalSize, color.NRGBA{0, 0, 0, 0})
+	newImg := imaging.New(finalSize, finalSize, borderColor)
 
 	// 计算居中位置
 	x := (finalSize - width) / 2

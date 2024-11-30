@@ -43,12 +43,12 @@ func TestCrop(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		newImg := imgHandle.Crop(imgHandle.EdgeDetect(img))
+		newImg := imgHandle.Crop(img, imgHandle.EdgeDetect(img))
 		if err != nil {
 			log.Fatal(err)
 		}
 		pngData := new(bytes.Buffer)
-		png.Encode(pngData, newImg)
+		png.Encode(pngData, *newImg)
 		err = os.WriteFile("./textImgs/output/"+filepath.Base(path), pngData.Bytes(), 0644)
 		if err != nil {
 			log.Fatal(err)
